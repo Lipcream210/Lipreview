@@ -1,226 +1,337 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Review Quiz</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maritime Quiz Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* [Keep all your existing CSS styles] */
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #1e1e1e;
-            color: #ffffff;
-            margin: 0;
-            padding: 20px;
+        .form-preview {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
         }
-        /* ... (all other existing styles) ... */
+        .question-card {
+            margin-bottom: 15px;
+            border-left: 4px solid #0d6efd;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 <body>
-    <div class="tabs">
-        <button class="tab" onclick="showTab('quiz')">Take Review</button>
-        <button class="tab" onclick="showTab('manage')">Manage Questions</button>
+    <div class="container-fluid py-4">
+        <h1 class="text-center mb-4">Maritime Quiz Manager</h1>
+        
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button">Manage Questions</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="review-tab" data-bs-toggle="tab" data-bs-target="#review" type="button">Review Questions</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content p-3 border border-top-0 rounded-bottom">
+            <!-- Manage Questions Tab -->
+            <div class="tab-pane fade show active" id="manage" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h3>Add/Edit Question</h3>
+                        <form id="questionForm">
+                            <div class="mb-3">
+                                <label class="form-label">Form Number</label>
+                                <select class="form-select" id="formNumber" required>
+                                    <option value="">Select Form</option>
+                                    <option value="F1">F1</option>
+                                    <option value="F2">F2</option>
+                                    <!-- Add up to F20 -->
+                                    <option value="F20">F20</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Question</label>
+                                <textarea class="form-control" id="questionText" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Option A</label>
+                                <input type="text" class="form-control" id="optionA" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Option B</label>
+                                <input type="text" class="form-control" id="optionB" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Option C</label>
+                                <input type="text" class="form-control" id="optionC" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Option D</label>
+                                <input type="text" class="form-control" id="optionD" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Correct Answer</label>
+                                <select class="form-select" id="correctAnswer" required>
+                                    <option value="">Select Correct Answer</option>
+                                    <option value="A">A</option>
+                                    <option value="B">B</option>
+                                    <option value="C">C</option>
+                                    <option value="D">D</option>
+                                </select>
+                            </div>
+                            <input type="hidden" id="questionId">
+                            <button type="submit" class="btn btn-primary">Save Question</button>
+                            <button type="button" class="btn btn-secondary" id="clearForm">Clear Form</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <h3>Current Form Questions</h3>
+                        <div class="mb-3">
+                            <select class="form-select" id="formFilter">
+                                <option value="">All Forms</option>
+                                <option value="F1">F1</option>
+                                <option value="F2">F2</option>
+                                <!-- Add up to F20 -->
+                                <option value="F20">F20</option>
+                            </select>
+                        </div>
+                        <div id="questionsList" class="list-group">
+                            <!-- Questions will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Review Questions Tab -->
+            <div class="tab-pane fade" id="review" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h4>Select Form</h4>
+                        <div class="list-group" id="formSelector">
+                            <!-- Form buttons will be added here -->
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <div id="formPreview">
+                            <h3 id="formTitle">Select a form to review</h3>
+                            <div id="formQuestions">
+                                <!-- Questions will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <div id="quiz" class="container">
-        <h1>Review Quiz</h1>
-        <h2>Select a Category</h2>
-        <select id="subject-select">
-            <option value="">-- Choose a Category --</option>
-            <script>
-                for (let i = 1; i <= 19; i++) {
-                    document.write(`<option value="F${i}">F${i}</option>`);
-                }
-            </script>
-        </select>
-        <button onclick="loadSubject()">Load Questions</button>
-        
-        <div id="quiz-container" class="hidden">
-            <p id="question-counter"></p>
-            <p class="question" id="question">Loading...</p>
-            <div class="options" id="options"></div>
-            <button class="next-btn" onclick="nextQuestion()">Next</button>
-            <button class="reset-btn" onclick="resetQuiz()">Reset Quiz</button>
-            <p id="total-score"></p>
-        </div>
-    </div>
-
-    <div id="manage" class="container hidden">
-        <h2>Add a New Question</h2>
-        <!-- Netlify Form -->
-        <form name="quiz-questions" netlify netlify-honeypot="bot-field" id="question-form">
-            <input type="hidden" name="form-name" value="quiz-questions">
-            <p class="hidden">
-                <label>Don't fill this out: <input name="bot-field"></label>
-            </p>
-            
-            <select name="subject" id="add-subject" required>
-                <option value="">-- Select Category --</option>
-                <script>
-                    for (let i = 1; i <= 19; i++) {
-                        document.write(`<option value="F${i}">F${i}</option>`);
-                    }
-                </script>
-            </select>
-            <input type="text" name="question" id="new-question" placeholder="Enter question" required>
-            <input type="text" name="option1" id="option1" placeholder="Option A" required>
-            <input type="text" name="option2" id="option2" placeholder="Option B" required>
-            <input type="text" name="option3" id="option3" placeholder="Option C">
-            <input type="text" name="option4" id="option4" placeholder="Option D">
-            <select name="correct-answer" id="correct-answer" required>
-                <option value="">-- Correct Answer --</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-            </select>
-            <button type="submit">Add Question</button>
-            <div id="form-status" class="sync-status hidden"></div>
-        </form>
-
-        <div id="question-list" class="question-list">
-            <p class="loading">Loading questions...</p>
-        </div>
-        
-        <button onclick="loadFromNetlify()" style="margin-top: 20px;">Load from Netlify</button>
-    </div>
-
     <script>
-        // Global variables
-        let questions = {};
-        let currentSubject = "";
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let shuffledQuestions = [];
-        let currentQuestionData = null;
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_BUCKET.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadFromLocalStorage();
-            // Set default subject
-            const defaultSubject = "F1";
-            document.getElementById("subject-select").value = defaultSubject;
-            document.getElementById("add-subject").value = defaultSubject;
-            displayQuestions();
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // DOM elements
+        const questionForm = document.getElementById('questionForm');
+        const formNumber = document.getElementById('formNumber');
+        const questionText = document.getElementById('questionText');
+        const optionA = document.getElementById('optionA');
+        const optionB = document.getElementById('optionB');
+        const optionC = document.getElementById('optionC');
+        const optionD = document.getElementById('optionD');
+        const correctAnswer = document.getElementById('correctAnswer');
+        const questionId = document.getElementById('questionId');
+        const clearFormBtn = document.getElementById('clearForm');
+        const formFilter = document.getElementById('formFilter');
+        const questionsList = document.getElementById('questionsList');
+        const formSelector = document.getElementById('formSelector');
+        const formTitle = document.getElementById('formTitle');
+        const formQuestions = document.getElementById('formQuestions');
+
+        // Form submission
+        questionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            // Handle form submission
-            document.getElementById('question-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                addQuestion();
-            });
-        });
-
-        function showTab(tabName) {
-            document.getElementById('quiz').classList.add('hidden');
-            document.getElementById('manage').classList.add('hidden');
-            document.getElementById(tabName).classList.remove('hidden');
-            if (tabName === 'manage') {
-                displayQuestions();
-            }
-        }
-
-        function addQuestion() {
-            const subject = document.getElementById("add-subject").value;
-            const question = document.getElementById("new-question").value.trim();
-            const option1 = document.getElementById("option1").value.trim();
-            const option2 = document.getElementById("option2").value.trim();
-            const option3 = document.getElementById("option3").value.trim();
-            const option4 = document.getElementById("option4").value.trim();
-            const correctAnswer = document.getElementById("correct-answer").value;
-
-            // Validate inputs
-            if (!subject || !question || !correctAnswer || !option1 || !option2) {
-                updateStatus("Please fill all required fields", "error");
-                return;
-            }
-
             const questionData = {
-                subject,
-                question,
-                option1,
-                option2,
-                option3: option3 || undefined,
-                option4: option4 || undefined,
-                'correct-answer': correctAnswer,
-                timestamp: Date.now()
+                formNumber: formNumber.value,
+                question: questionText.value,
+                options: {
+                    A: optionA.value,
+                    B: optionB.value,
+                    C: optionC.value,
+                    D: optionD.value
+                },
+                correctAnswer: correctAnswer.value,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            // Save to local storage
-            if (!questions[subject]) {
-                questions[subject] = [];
+            try {
+                if (questionId.value) {
+                    // Update existing question
+                    await db.collection('questions').doc(questionId.value).update(questionData);
+                } else {
+                    // Add new question
+                    await db.collection('questions').add(questionData);
+                }
+                clearForm();
+                loadQuestions();
+            } catch (error) {
+                console.error("Error saving question: ", error);
+                alert("Error saving question. Please try again.");
             }
-            questions[subject].push(questionData);
-            saveToLocalStorage();
+        });
+
+        // Clear form
+        clearFormBtn.addEventListener('click', clearForm);
+
+        function clearForm() {
+            questionForm.reset();
+            questionId.value = '';
+        }
+
+        // Load questions for management
+        function loadQuestions() {
+            let query = db.collection('questions').orderBy('createdAt', 'desc');
             
-            // Submit to Netlify Forms
-            const form = document.getElementById('question-form');
-            const formData = new FormData(form);
-            
-            fetch('/', {
-                method: 'POST',
-                body: new URLSearchParams(formData),
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            })
-            .then(() => {
-                updateStatus("Question saved to Netlify!", "success");
-                form.reset();
-                displayQuestions();
-            })
-            .catch(error => {
-                updateStatus("Saved locally (Netlify submit failed)", "error");
-                console.error('Form submission error:', error);
+            if (formFilter.value) {
+                query = query.where('formNumber', '==', formFilter.value);
+            }
+
+            query.onSnapshot((snapshot) => {
+                questionsList.innerHTML = '';
+                snapshot.forEach((doc) => {
+                    const question = doc.data();
+                    const listItem = document.createElement('div');
+                    listItem.className = 'list-group-item list-group-item-action';
+                    listItem.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${question.formNumber}: ${question.question}</h6>
+                            <small>${question.correctAnswer} is correct</small>
+                        </div>
+                        <div class="d-flex justify-content-end mt-2">
+                            <button class="btn btn-sm btn-outline-primary me-2 edit-btn" data-id="${doc.id}">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${doc.id}">Delete</button>
+                        </div>
+                    `;
+                    questionsList.appendChild(listItem);
+                });
+
+                // Add event listeners to edit buttons
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const docId = e.target.getAttribute('data-id');
+                        const doc = await db.collection('questions').doc(docId).get();
+                        const question = doc.data();
+                        
+                        formNumber.value = question.formNumber;
+                        questionText.value = question.question;
+                        optionA.value = question.options.A;
+                        optionB.value = question.options.B;
+                        optionC.value = question.options.C;
+                        optionD.value = question.options.D;
+                        correctAnswer.value = question.correctAnswer;
+                        questionId.value = docId;
+                    });
+                });
+
+                // Add event listeners to delete buttons
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        if (confirm('Are you sure you want to delete this question?')) {
+                            const docId = e.target.getAttribute('data-id');
+                            await db.collection('questions').doc(docId).delete();
+                        }
+                    });
+                });
             });
         }
 
-        async function loadFromNetlify() {
-            try {
-                updateStatus("Loading from Netlify...", "info");
-                
-                // In a real implementation, you would:
-                // 1. Download your form submissions from Netlify (as CSV)
-                // 2. Parse them into your questions format
-                // 3. Merge with local questions
-                
-                // For now, we'll just reload from local storage
-                loadFromLocalStorage();
-                updateStatus("Loaded questions", "success");
-                displayQuestions();
-                
-                // Note: Netlify doesn't provide a direct API to read form submissions
-                // You would need to either:
-                // - Download CSV manually and import
-                // - Use a Netlify Function to process submissions
-                // - Use a separate database
-                
-            } catch (error) {
-                updateStatus("Load failed: " + error.message, "error");
-                console.error('Load error:', error);
+        // Load form selector for review
+        function loadFormSelector() {
+            // Create buttons for F1-F20
+            formSelector.innerHTML = '';
+            for (let i = 1; i <= 20; i++) {
+                const form = `F${i}`;
+                const button = document.createElement('button');
+                button.className = 'list-group-item list-group-item-action';
+                button.textContent = form;
+                button.addEventListener('click', () => loadFormQuestions(form));
+                formSelector.appendChild(button);
             }
         }
 
-        function loadFromLocalStorage() {
-            const stored = localStorage.getItem("questions");
-            questions = stored ? JSON.parse(stored) : {};
-            console.log("Loaded from localStorage:", questions);
+        // Load questions for a specific form
+        async function loadFormQuestions(formNumber) {
+            formTitle.textContent = `Questions for ${formNumber}`;
+            formQuestions.innerHTML = '<p>Loading questions...</p>';
+            
+            const snapshot = await db.collection('questions')
+                .where('formNumber', '==', formNumber)
+                .orderBy('createdAt')
+                .get();
+            
+            if (snapshot.empty) {
+                formQuestions.innerHTML = '<p>No questions found for this form.</p>';
+                return;
+            }
+            
+            formQuestions.innerHTML = '';
+            snapshot.forEach((doc, index) => {
+                const question = doc.data();
+                const card = document.createElement('div');
+                card.className = 'card question-card mb-3';
+                card.innerHTML = `
+                    <div class="card-body">
+                        <h5 class="card-title">Question ${index + 1}</h5>
+                        <p class="card-text">${question.question}</p>
+                        <div class="options">
+                            <div class="form-check ${question.correctAnswer === 'A' ? 'text-success fw-bold' : ''}">
+                                <input class="form-check-input" type="radio" disabled ${question.correctAnswer === 'A' ? 'checked' : ''}>
+                                <label class="form-check-label">A. ${question.options.A}</label>
+                            </div>
+                            <div class="form-check ${question.correctAnswer === 'B' ? 'text-success fw-bold' : ''}">
+                                <input class="form-check-input" type="radio" disabled ${question.correctAnswer === 'B' ? 'checked' : ''}>
+                                <label class="form-check-label">B. ${question.options.B}</label>
+                            </div>
+                            <div class="form-check ${question.correctAnswer === 'C' ? 'text-success fw-bold' : ''}">
+                                <input class="form-check-input" type="radio" disabled ${question.correctAnswer === 'C' ? 'checked' : ''}>
+                                <label class="form-check-label">C. ${question.options.C}</label>
+                            </div>
+                            <div class="form-check ${question.correctAnswer === 'D' ? 'text-success fw-bold' : ''}">
+                                <input class="form-check-input" type="radio" disabled ${question.correctAnswer === 'D' ? 'checked' : ''}>
+                                <label class="form-check-label">D. ${question.options.D}</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                formQuestions.appendChild(card);
+            });
         }
 
-        function saveToLocalStorage() {
-            localStorage.setItem("questions", JSON.stringify(questions));
-            console.log("Saved to localStorage:", questions);
-        }
-
-        function updateStatus(message, type) {
-            const statusEl = document.getElementById('form-status');
-            statusEl.textContent = message;
-            statusEl.className = `sync-status sync-${type}`;
-            statusEl.classList.remove("hidden");
-            setTimeout(() => {
-                statusEl.classList.add("hidden");
-            }, 3000);
-        }
-
-        // [Keep all your existing quiz functionality functions:
-        // loadSubject, showQuestion, checkAnswer, nextQuestion, 
-        // resetQuiz, displayQuestions, shuffleArray, etc.]
+        // Event listeners
+        formFilter.addEventListener('change', loadQuestions);
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadQuestions();
+            loadFormSelector();
+        });
     </script>
 </body>
 </html>
