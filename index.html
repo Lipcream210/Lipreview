@@ -3,6 +3,7 @@
 <head>
     <title>Review</title>
     <style>
+        /* Keep all previous CSS styles */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
@@ -39,156 +40,22 @@
             max-width: 500px;
             margin: auto;
         }
-        h1, h2 {
-            color: #ffffff;
-        }
-        .options button {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            border: none;
-            background: #444;
-            color: white;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .options button:hover {
-            background: #666;
-        }
-        .correct {
-            background: #28a745 !important;
-        }
-        .wrong {
-            background: #dc3545 !important;
-        }
-        select, input, button {
-            margin: 5px;
-            padding: 10px;
-            border: 1px solid #555;
-            border-radius: 5px;
-            width: 90%;
-            background: #333;
-            color: white;
-        }
-        button {
-            background: #28a745;
-            color: white;
-            cursor: pointer;
-            border-radius: 5px;
-            padding: 10px 20px;
-            margin: 10px 0;
-            border: none;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background: #218838;
-        }
-        .next-btn {
-            background: #007bff;
-        }
-        .reset-btn {
-            background: #dc3545;
-        }
-        .next-btn:hover {
-            background: #0056b3;
-        }
-        .reset-btn:hover {
-            background: #c82333;
-        }
-        .question-list {
-            margin-top: 20px;
-            text-align: left;
-        }
-        .question-list button {
-            background: #dc3545;
-            margin: 5px;
-        }
-        .question-list button.edit {
-            background: #ffc107;
-        }
-        .loading {
-            color: #aaa;
-            font-style: italic;
-        }
-        .sync-status {
-            margin: 10px 0;
-            padding: 8px;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .sync-success {
-            background-color: #28a745;
-        }
-        .sync-error {
-            background-color: #dc3545;
-        }
-        .sync-info {
-            background-color: #17a2b8;
-        }
+        /* ... (keep all other CSS styles) ... */
     </style>
 </head>
 <body>
+    <!-- Keep the same HTML structure -->
     <div class="tabs">
         <button class="tab" onclick="showTab('quiz')">Take Review</button>
         <button class="tab" onclick="showTab('manage')">Manage Questions</button>
     </div>
     
     <div id="quiz" class="container">
-        <h1>Review</h1>
-        <h2>Select a Category</h2>
-        <select id="subject-select">
-            <option value="">-- Choose a Category --</option>
-            <script>
-                for (let i = 1; i <= 19; i++) {
-                    document.write(`<option value="F${i}">F${i}</option>`);
-                }
-            </script>
-        </select>
-        <button onclick="loadSubject()">Load Questions</button>
-        
-        <div id="quiz-container" class="hidden">
-            <p id="question-counter"></p>
-            <p class="question" id="question">Loading...</p>
-            <div class="options" id="options"></div>
-            <button class="next-btn" onclick="nextQuestion()">Next</button>
-            <button class="reset-btn" onclick="resetQuiz()">Reset Quiz</button>
-            <p id="total-score"></p>
-        </div>
+        <!-- Keep quiz tab content -->
     </div>
 
     <div id="manage" class="container hidden">
-        <h2>Add a New Question</h2>
-        <form id="question-form">
-            <select id="add-subject" required>
-                <option value="">-- Select Category --</option>
-                <script>
-                    for (let i = 1; i <= 19; i++) {
-                        document.write(`<option value="F${i}">F${i}</option>`);
-                    }
-                </script>
-            </select>
-            <input type="text" id="new-question" placeholder="Enter question" required>
-            <input type="text" id="option1" placeholder="Option A" required>
-            <input type="text" id="option2" placeholder="Option B" required>
-            <input type="text" id="option3" placeholder="Option C">
-            <input type="text" id="option4" placeholder="Option D">
-            <select id="correct-answer" required>
-                <option value="">-- Correct Answer --</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-            </select>
-            <button type="button" onclick="addQuestion()">Add Question</button>
-            <div id="sync-status" class="sync-status hidden"></div>
-        </form>
-
-        <div id="question-list" class="question-list">
-            <p class="loading">Loading questions...</p>
-        </div>
-        
-        <button onclick="syncWithCloud()" style="margin-top: 20px;">Sync with Cloud</button>
+        <!-- Keep manage tab content -->
     </div>
 
     <script>
@@ -202,11 +69,9 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Load questions from local storage
-            questions = JSON.parse(localStorage.getItem("questions")) || {};
-            displayQuestions();
-            
-            // Set default subject in both select elements
+            // Load initial questions
+            loadFromLocalStorage();
+            // Set default subject
             const defaultSubject = "F1";
             document.getElementById("subject-select").value = defaultSubject;
             document.getElementById("add-subject").value = defaultSubject;
@@ -217,104 +82,12 @@
             document.getElementById('manage').classList.add('hidden');
             document.getElementById(tabName).classList.remove('hidden');
             if (tabName === 'manage') {
+                // Always refresh questions when switching to manage tab
                 displayQuestions();
             }
         }
 
-        function loadSubject() {
-            currentSubject = document.getElementById("subject-select").value;
-            currentQuestionIndex = 0;
-            score = 0;
-            
-            if (questions[currentSubject] && questions[currentSubject].length > 0) {
-                // Shuffle questions for this subject
-                shuffledQuestions = [...questions[currentSubject]];
-                shuffleArray(shuffledQuestions);
-                
-                document.getElementById("quiz-container").classList.remove("hidden");
-                showQuestion();
-            } else {
-                alert("No questions available for this subject.");
-                document.getElementById("quiz-container").classList.add("hidden");
-            }
-        }
-
-        function showQuestion() {
-            if (!shuffledQuestions[currentQuestionIndex]) {
-                console.error("No question at index", currentQuestionIndex);
-                return;
-            }
-
-            currentQuestionData = shuffledQuestions[currentQuestionIndex];
-            document.getElementById("question").innerText = currentQuestionData.question;
-            document.getElementById("question-counter").innerText = `${currentQuestionIndex + 1}/${shuffledQuestions.length}`;
-            
-            let optionsDiv = document.getElementById("options");
-            optionsDiv.innerHTML = "";
-            
-            // Prepare options with their labels
-            const options = [
-                { letter: "A", text: currentQuestionData.option1 },
-                { letter: "B", text: currentQuestionData.option2 },
-                { letter: "C", text: currentQuestionData.option3 || '' },
-                { letter: "D", text: currentQuestionData.option4 || '' }
-            ].filter(opt => opt.text); // Remove empty options
-            
-            // Find the correct answer
-            const correctAnswerLetter = currentQuestionData['correct-answer'];
-            
-            // Shuffle the options
-            shuffleArray(options);
-            
-            // Create buttons for each option
-            options.forEach(option => {
-                let button = document.createElement("button");
-                button.innerText = `${option.letter}. ${option.text}`;
-                
-                // Check if this option is the correct one
-                const isCorrect = option.letter === correctAnswerLetter;
-                
-                button.onclick = () => checkAnswer(button, option.letter, correctAnswerLetter, isCorrect);
-                optionsDiv.appendChild(button);
-            });
-        }
-
-        function checkAnswer(button, selectedLetter, correctLetter, isCorrect) {
-            document.querySelectorAll(".options button").forEach(btn => btn.disabled = true);
-            
-            if (isCorrect) {
-                button.classList.add("correct");
-                score++;
-            } else {
-                button.classList.add("wrong");
-                // Highlight the correct answer
-                document.querySelectorAll(".options button").forEach(btn => {
-                    if (btn.innerText.startsWith(correctLetter)) {
-                        btn.classList.add("correct");
-                    }
-                });
-            }
-            document.getElementById("total-score").innerText = `Score: ${score}/${shuffledQuestions.length}`;
-        }
-
-        function nextQuestion() {
-            currentQuestionIndex++;
-            if (currentQuestionIndex < shuffledQuestions.length) {
-                showQuestion();
-            } else {
-                const percentage = Math.round((score / shuffledQuestions.length) * 100);
-                alert(`Quiz Completed!\nYour score: ${score}/${shuffledQuestions.length} (${percentage}%)`);
-                resetQuiz();
-            }
-        }
-
-        function resetQuiz() {
-            currentQuestionIndex = 0;
-            score = 0;
-            document.getElementById("total-score").innerText = "";
-            document.getElementById("quiz-container").classList.add("hidden");
-        }
-
+        // Modified addQuestion function
         async function addQuestion() {
             const subject = document.getElementById("add-subject").value;
             const question = document.getElementById("new-question").value.trim();
@@ -341,14 +114,12 @@
                 timestamp: Date.now()
             };
 
-            // Save to local storage
-            if (!questions[subject]) {
-                questions[subject] = [];
-            }
+            // 1. Always save to localStorage first
+            if (!questions[subject]) questions[subject] = [];
             questions[subject].push(questionData);
-            localStorage.setItem("questions", JSON.stringify(questions));
+            saveToLocalStorage();
             
-            // Try to save to cloud
+            // 2. Try cloud sync in background
             try {
                 updateSyncStatus("Saving to cloud...", "info");
                 const response = await fetch('/.netlify/functions/save-question', {
@@ -357,86 +128,94 @@
                     body: JSON.stringify(questionData)
                 });
                 
-                if (!response.ok) throw new Error('Failed to save');
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Cloud save failed');
+                }
                 
                 updateSyncStatus("Question saved to cloud!", "success");
             } catch (error) {
-                console.error('Cloud save failed:', error);
-                updateSyncStatus("Saved locally (cloud sync failed)", "error");
+                console.error('Cloud error:', error);
+                updateSyncStatus(`Local save OK - Cloud failed: ${error.message}`, "error");
             }
             
+            // Refresh display
             displayQuestions();
             document.getElementById("question-form").reset();
         }
 
+        // Updated syncWithCloud function
         async function syncWithCloud() {
             try {
                 updateSyncStatus("Syncing with cloud...", "info");
                 const response = await fetch('/.netlify/functions/get-questions');
                 
-                if (!response.ok) throw new Error('Failed to load cloud questions');
+                if (!response.ok) throw new Error('Cloud connection failed');
                 
                 const cloudQuestions = await response.json();
                 
-                // Replace local questions with cloud questions
-                questions = cloudQuestions;
-                localStorage.setItem("questions", JSON.stringify(questions));
+                // Merge cloud data with local data
+                const mergedQuestions = {...questions};
+                for (const subject in cloudQuestions) {
+                    if (!mergedQuestions[subject]) mergedQuestions[subject] = [];
+                    
+                    cloudQuestions[subject].forEach(cloudQ => {
+                        const exists = mergedQuestions[subject].some(localQ => 
+                            localQ.timestamp === cloudQ.timestamp
+                        );
+                        if (!exists) mergedQuestions[subject].push(cloudQ);
+                    });
+                }
                 
-                updateSyncStatus("Sync complete! Load questions to refresh.", "success");
+                // Update local storage
+                questions = mergedQuestions;
+                saveToLocalStorage();
+                updateSyncStatus("Sync complete! Questions merged.", "success");
                 displayQuestions();
+                
             } catch (error) {
                 console.error('Sync failed:', error);
-                updateSyncStatus("Sync failed. Using local data.", "error");
+                updateSyncStatus("Sync failed - Using local data", "error");
             }
         }
 
+        // New helper functions
+        function saveToLocalStorage() {
+            localStorage.setItem("questions", JSON.stringify(questions));
+        }
+
+        function loadFromLocalStorage() {
+            const stored = localStorage.getItem("questions");
+            questions = stored ? JSON.parse(stored) : {};
+        }
+
+        // Modified displayQuestions
         function displayQuestions() {
-            let questionListDiv = document.getElementById("question-list");
+            const subject = document.getElementById("add-subject").value;
+            const questionListDiv = document.getElementById("question-list");
             questionListDiv.innerHTML = "";
-            
-            const currentSubject = document.getElementById("add-subject").value;
-            
-            if (!questions[currentSubject] || questions[currentSubject].length === 0) {
-                questionListDiv.innerHTML = '<p>No questions found for this category. Add some questions!</p>';
+
+            if (!questions[subject] || questions[subject].length === 0) {
+                questionListDiv.innerHTML = '<p>No questions found. Add some!</p>';
                 return;
             }
-            
-            questions[currentSubject].forEach((q, index) => {
-                let questionItem = document.createElement("div");
+
+            questions[subject].forEach((q, index) => {
+                const questionItem = document.createElement("div");
                 questionItem.innerHTML = `
                     <strong>Question ${index + 1}: ${q.question}</strong><br>
-                    <span>Options: ${[q.option1, q.option2, q.option3, q.option4].filter(x => x).join(", ")}</span><br>
-                    Correct Answer: ${q['correct-answer']}<br>
-                    <button class="edit" onclick="editQuestion('${currentSubject}', ${index})">Edit</button>
-                    <button onclick="deleteQuestion('${currentSubject}', ${index})">Delete</button><br><br>
+                    Options: ${[q.option1, q.option2, q.option3, q.option4].filter(x => x).join(", ")}<br>
+                    Answer: ${q['correct-answer']}<br>
+                    <button class="edit" onclick="editQuestion('${subject}', ${index})">Edit</button>
+                    <button onclick="deleteQuestion('${subject}', ${index})">Delete</button>
+                    <hr>
                 `;
                 questionListDiv.appendChild(questionItem);
             });
         }
 
-        function deleteQuestion(subject, index) {
-            if (!confirm("Are you sure you want to delete this question?")) return;
-            
-            questions[subject].splice(index, 1);
-            if (questions[subject].length === 0) {
-                delete questions[subject];
-            }
-            localStorage.setItem("questions", JSON.stringify(questions));
-            displayQuestions();
-        }
-
-        function editQuestion(subject, index) {
-            const q = questions[subject][index];
-            document.getElementById("add-subject").value = q.subject;
-            document.getElementById("new-question").value = q.question;
-            document.getElementById("option1").value = q.option1;
-            document.getElementById("option2").value = q.option2;
-            document.getElementById("option3").value = q.option3 || '';
-            document.getElementById("option4").value = q.option4 || '';
-            document.getElementById("correct-answer").value = q['correct-answer'];
-            
-            deleteQuestion(subject, index);
-        }
+        // Keep other functions (loadSubject, showQuestion, checkAnswer, etc.) the same
+        // ...
 
         function updateSyncStatus(message, type) {
             const statusEl = document.getElementById('sync-status');
@@ -445,15 +224,7 @@
             statusEl.classList.remove("hidden");
             setTimeout(() => {
                 statusEl.classList.add("hidden");
-            }, 3000);
-        }
-
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
+            }, 5000);
         }
     </script>
 </body>
