@@ -113,8 +113,9 @@
         }
         .sync-status {
             margin: 10px 0;
-            padding: 5px;
+            padding: 8px;
             border-radius: 5px;
+            font-weight: bold;
         }
         .sync-success {
             background-color: #28a745;
@@ -187,6 +188,7 @@
         </div>
         
         <button onclick="syncWithCloud()" style="margin-top: 20px;">Sync with Cloud</button>
+        <button onclick="clearLocalData()" style="margin-top: 10px; background: #6c757d;">Clear Local Data</button>
     </div>
 
     <script>
@@ -201,7 +203,7 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', async function() {
-            // Try to sync with cloud immediately
+            console.log("Initializing...");
             await syncWithCloud();
             displayQuestions();
         });
@@ -234,6 +236,11 @@
         }
 
         function showQuestion() {
+            if (!shuffledQuestions[currentQuestionIndex]) {
+                console.error("No question found at index", currentQuestionIndex);
+                return;
+            }
+
             currentQuestionData = shuffledQuestions[currentQuestionIndex];
             document.getElementById("question").innerText = currentQuestionData.question;
             document.getElementById("question-counter").innerText = `${currentQuestionIndex + 1}/${shuffledQuestions.length}`;
@@ -345,7 +352,8 @@
                     body: JSON.stringify(questionData)
                 });
                 
-                if (!response.ok) throw new Error('Failed to save');
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Failed to save');
                 
                 updateSyncStatus("Question saved to cloud!", "success");
                 lastSyncTime = Date.now();
@@ -364,29 +372,37 @@
                 updateSyncStatus("Syncing with cloud...", "info");
                 const response = await fetch('/.netlify/functions/get-questions');
                 
-                if (!response.ok) throw new Error('Failed to load cloud questions');
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to load cloud questions');
+                }
                 
                 const cloudQuestions = await response.json();
+                console.log("Received cloud questions:", cloudQuestions);
                 
-                // Merge cloud questions with local ones
+                // Clear existing questions
+                questions = {};
+                
+                // Merge cloud questions
                 for (const subject in cloudQuestions) {
-                    if (!questions[subject]) questions[subject] = [];
-                    
-                    cloudQuestions[subject].forEach(cloudQ => {
-                        const exists = questions[subject].some(localQ => 
-                            localQ.timestamp === cloudQ.timestamp
-                        );
-                        if (!exists) questions[subject].push(cloudQ);
-                    });
+                    questions[subject] = cloudQuestions[subject];
                 }
                 
                 localStorage.setItem("questions", JSON.stringify(questions));
                 lastSyncTime = Date.now();
                 localStorage.setItem("lastSyncTime", lastSyncTime);
-                updateSyncStatus("Sync complete!", "success");
+                updateSyncStatus("Sync complete! Questions loaded: " + Object.keys(questions).reduce((acc, subj) => acc + questions[subj].length, 0), "success");
+                
+                // Refresh display
+                displayQuestions();
+                
+                // If we're in quiz mode, reload the subject
+                if (!document.getElementById("quiz-container").classList.contains("hidden")) {
+                    loadSubject();
+                }
             } catch (error) {
                 console.error('Sync failed:', error);
-                updateSyncStatus("Sync failed. Using local data.", "error");
+                updateSyncStatus("Sync failed: " + error.message, "error");
             }
         }
 
@@ -438,6 +454,16 @@
             deleteQuestion(subject, index);
         }
 
+        function clearLocalData() {
+            if (confirm("Clear ALL local question data? This won't affect cloud data.")) {
+                localStorage.removeItem("questions");
+                localStorage.removeItem("lastSyncTime");
+                questions = {};
+                updateSyncStatus("Local data cleared. Sync to reload cloud data.", "info");
+                displayQuestions();
+            }
+        }
+
         function updateSyncStatus(message, type) {
             const statusEl = document.getElementById('sync-status');
             statusEl.textContent = message;
@@ -445,7 +471,7 @@
             statusEl.classList.remove("hidden");
             setTimeout(() => {
                 statusEl.classList.add("hidden");
-            }, 3000);
+            }, 5000);
         }
 
         function shuffleArray(array) {

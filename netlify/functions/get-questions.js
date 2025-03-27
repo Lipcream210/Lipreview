@@ -6,10 +6,7 @@ exports.handler = async () => {
     const dbPath = path.join(process.cwd(), 'questions.json');
     
     if (!fs.existsSync(dbPath)) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({})
-      };
+      return { statusCode: 200, body: JSON.stringify({}) };
     }
     
     const questions = JSON.parse(fs.readFileSync(dbPath));
