@@ -122,6 +122,9 @@
         .sync-error {
             background-color: #dc3545;
         }
+        .sync-info {
+            background-color: #17a2b8;
+        }
     </style>
 </head>
 <body>
@@ -154,13 +157,8 @@
 
     <div id="manage" class="container hidden">
         <h2>Add a New Question</h2>
-        <form name="quiz-questions" netlify netlify-honeypot="bot-field" id="question-form">
-            <input type="hidden" name="form-name" value="quiz-questions">
-            <p class="hidden">
-                <label>Don't fill this out if you're human: <input name="bot-field"></label>
-            </p>
-            
-            <select id="add-subject" name="subject" required>
+        <form id="question-form">
+            <select id="add-subject" required>
                 <option value="">-- Select Category --</option>
                 <script>
                     for (let i = 1; i <= 19; i++) {
@@ -168,19 +166,19 @@
                     }
                 </script>
             </select>
-            <input type="text" id="new-question" name="question" placeholder="Enter question" required>
-            <input type="text" id="option1" name="option1" placeholder="Option A" required>
-            <input type="text" id="option2" name="option2" placeholder="Option B" required>
-            <input type="text" id="option3" name="option3" placeholder="Option C" required>
-            <input type="text" id="option4" name="option4" placeholder="Option D" required>
-            <select id="correct-answer" name="correct-answer" required>
+            <input type="text" id="new-question" placeholder="Enter question" required>
+            <input type="text" id="option1" placeholder="Option A" required>
+            <input type="text" id="option2" placeholder="Option B" required>
+            <input type="text" id="option3" placeholder="Option C" required>
+            <input type="text" id="option4" placeholder="Option D" required>
+            <select id="correct-answer" required>
                 <option value="">-- Correct Answer --</option>
                 <option value="A">A</option>
                 <option value="B">B</option>
                 <option value="C">C</option>
                 <option value="D">D</option>
             </select>
-            <button type="submit">Add Question</button>
+            <button type="button" onclick="addQuestion()">Add Question</button>
             <div id="sync-status" class="sync-status hidden"></div>
         </form>
 
@@ -192,16 +190,18 @@
     </div>
 
     <script>
+        // Global variables
         let questions = JSON.parse(localStorage.getItem("questions")) || {};
         let currentSubject = "";
         let currentQuestionIndex = 0;
         let score = 0;
-        let lastSyncTime = localStorage.getItem("lastSyncTime") || 0;
+        let cloudEnabled = true;
+        let shuffledQuestions = [];
+        let currentQuestionData = null;
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('question-form').addEventListener('submit', handleFormSubmit);
-            checkAutoSync();
+            displayQuestions();
         });
 
         function showTab(tabName) {
@@ -213,18 +213,16 @@
             }
         }
 
-        async function loadSubject() {
+        function loadSubject() {
             currentSubject = document.getElementById("subject-select").value;
             currentQuestionIndex = 0;
             score = 0;
             
-            // Check if we should sync with cloud (if data is more than 1 hour old)
-            const now = Date.now();
-            if (now - lastSyncTime > 3600000) { // 1 hour in milliseconds
-                await syncWithCloud();
-            }
-            
             if (questions[currentSubject] && questions[currentSubject].length > 0) {
+                // Shuffle questions for this subject
+                shuffledQuestions = [...questions[currentSubject]];
+                shuffleArray(shuffledQuestions);
+                
                 document.getElementById("quiz-container").classList.remove("hidden");
                 showQuestion();
             } else {
@@ -234,52 +232,65 @@
         }
 
         function showQuestion() {
-            let questionData = questions[currentSubject][currentQuestionIndex];
-            document.getElementById("question").innerText = questionData.question;
-            document.getElementById("question-counter").innerText = `${currentQuestionIndex + 1}/${questions[currentSubject].length}`;
+            currentQuestionData = shuffledQuestions[currentQuestionIndex];
+            document.getElementById("question").innerText = currentQuestionData.question;
+            document.getElementById("question-counter").innerText = `${currentQuestionIndex + 1}/${shuffledQuestions.length}`;
             
             let optionsDiv = document.getElementById("options");
             optionsDiv.innerHTML = "";
             
-            // Dynamically show available options
+            // Prepare options with their labels
             const options = [
-                questionData.option1,
-                questionData.option2,
-                questionData.option3,
-                questionData.option4
-            ].filter(opt => opt); // Remove empty options
+                { letter: "A", text: currentQuestionData.option1 },
+                { letter: "B", text: currentQuestionData.option2 },
+                { letter: "C", text: currentQuestionData.option3 },
+                { letter: "D", text: currentQuestionData.option4 }
+            ].filter(opt => opt.text); // Remove empty options
             
-            options.forEach((option, index) => {
-                let letter = String.fromCharCode(65 + index);
+            // Shuffle the options but remember the correct answer
+            const correctAnswerLetter = currentQuestionData['correct-answer'];
+            const correctAnswerText = options.find(opt => opt.letter === correctAnswerLetter)?.text;
+            
+            shuffleArray(options);
+            
+            // Create buttons for each option
+            options.forEach(option => {
                 let button = document.createElement("button");
-                button.innerText = `${letter}. ${option}`;
-                button.onclick = () => checkAnswer(button, letter, questionData['correct-answer']);
+                button.innerText = `${option.letter}. ${option.text}`;
+                
+                // Check if this option is the correct one (comparing text in case letters changed)
+                const isCorrect = option.text === correctAnswerText;
+                
+                button.onclick = () => checkAnswer(button, option.letter, correctAnswerLetter, isCorrect);
                 optionsDiv.appendChild(button);
             });
         }
 
-        function checkAnswer(button, selected, correct) {
+        function checkAnswer(button, selectedLetter, correctLetter, isCorrect) {
             document.querySelectorAll(".options button").forEach(btn => btn.disabled = true);
-            if (selected === correct) {
+            
+            if (isCorrect) {
                 button.classList.add("correct");
                 score++;
             } else {
                 button.classList.add("wrong");
+                // Highlight the correct answer
                 document.querySelectorAll(".options button").forEach(btn => {
-                    if (btn.innerText.startsWith(correct)) {
+                    if (btn.innerText.startsWith(correctLetter)) {
                         btn.classList.add("correct");
                     }
                 });
             }
-            document.getElementById("total-score").innerText = `Score: ${score}`;
+            document.getElementById("total-score").innerText = `Score: ${score}/${shuffledQuestions.length}`;
         }
 
         function nextQuestion() {
             currentQuestionIndex++;
-            if (currentQuestionIndex < questions[currentSubject].length) {
+            if (currentQuestionIndex < shuffledQuestions.length) {
                 showQuestion();
             } else {
-                alert(`Quiz Completed! Your score is: ${score}/${questions[currentSubject].length}`);
+                const percentage = Math.round((score / shuffledQuestions.length) * 100);
+                alert(`Quiz Completed!\nYour score: ${score}/${shuffledQuestions.length} (${percentage}%)`);
                 resetQuiz();
             }
         }
@@ -291,61 +302,63 @@
             document.getElementById("quiz-container").classList.add("hidden");
         }
 
-        async function handleFormSubmit(event) {
-            event.preventDefault();
-            const form = event.target;
-            const formData = new FormData(form);
-            const statusEl = document.getElementById('sync-status');
-            
-            // Prepare question data
+        async function addQuestion() {
+            const subject = document.getElementById("add-subject").value;
+            const question = document.getElementById("new-question").value.trim();
+            const option1 = document.getElementById("option1").value.trim();
+            const option2 = document.getElementById("option2").value.trim();
+            const option3 = document.getElementById("option3").value.trim();
+            const option4 = document.getElementById("option4").value.trim();
+            const correctAnswer = document.getElementById("correct-answer").value;
+
+            // Validate inputs
+            if (!subject || !question || !correctAnswer || !option1 || !option2) {
+                updateSyncStatus("Please fill all required fields", "error");
+                return;
+            }
+
             const questionData = {
-                subject: formData.get('subject'),
-                question: formData.get('question'),
-                option1: formData.get('option1'),
-                option2: formData.get('option2'),
-                option3: formData.get('option3'),
-                option4: formData.get('option4'),
-                'correct-answer': formData.get('correct-answer'),
+                subject,
+                question,
+                option1,
+                option2,
+                option3: option3 || undefined,
+                option4: option4 || undefined,
+                'correct-answer': correctAnswer,
                 timestamp: Date.now()
             };
-            
-            // Save to local storage first
-            if (!questions[questionData.subject]) {
-                questions[questionData.subject] = [];
+
+            // Save to localStorage immediately
+            if (!questions[subject]) {
+                questions[subject] = [];
             }
-            questions[questionData.subject].push(questionData);
+            questions[subject].push(questionData);
             localStorage.setItem("questions", JSON.stringify(questions));
             
-            // Update UI immediately
-            displayQuestions();
-            form.reset();
-            
-            // Try to submit to Netlify Forms
+            // Try to save to cloud
             try {
-                statusEl.textContent = "Syncing with cloud...";
-                statusEl.className = "sync-status";
-                statusEl.classList.remove("hidden");
-                
-                await fetch("/", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams(formData).toString()
+                updateSyncStatus("Saving to cloud...", "info");
+                const response = await fetch('/.netlify/functions/save-question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(questionData)
                 });
                 
-                statusEl.textContent = "Question saved to cloud!";
-                statusEl.className = "sync-status sync-success";
-                lastSyncTime = Date.now();
-                localStorage.setItem("lastSyncTime", lastSyncTime);
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Failed to save');
+                
+                updateSyncStatus("Question saved to cloud!", "success");
+                cloudEnabled = true;
             } catch (error) {
-                console.error("Cloud sync failed:", error);
-                statusEl.textContent = "Saved locally (cloud sync failed)";
-                statusEl.className = "sync-status sync-error";
+                console.error('Cloud save failed:', error);
+                cloudEnabled = false;
+                updateSyncStatus("Saved locally (cloud sync failed)", "error");
             }
             
-            // Hide status after 3 seconds
-            setTimeout(() => {
-                statusEl.classList.add("hidden");
-            }, 3000);
+            displayQuestions();
+            document.getElementById("question-form").reset();
         }
 
         function displayQuestions() {
@@ -389,51 +402,68 @@
             document.getElementById("new-question").value = q.question;
             document.getElementById("option1").value = q.option1;
             document.getElementById("option2").value = q.option2;
-            document.getElementById("option3").value = q.option3;
-            document.getElementById("option4").value = q.option4;
+            document.getElementById("option3").value = q.option3 || '';
+            document.getElementById("option4").value = q.option4 || '';
             document.getElementById("correct-answer").value = q['correct-answer'];
             
             deleteQuestion(subject, index);
         }
 
         async function syncWithCloud() {
-            const statusEl = document.getElementById('sync-status');
-            statusEl.textContent = "Fetching questions from cloud...";
-            statusEl.className = "sync-status";
-            statusEl.classList.remove("hidden");
-            
             try {
-                // In a real implementation, you would fetch from your Netlify function
-                // For now, we'll simulate a successful sync
-                const now = Date.now();
-                lastSyncTime = now;
-                localStorage.setItem("lastSyncTime", now);
+                updateSyncStatus("Syncing with cloud...", "info");
                 
-                statusEl.textContent = "Sync complete!";
-                statusEl.className = "sync-status sync-success";
+                const response = await fetch('/.netlify/functions/get-questions');
+                const result = await response.json();
                 
-                // For actual implementation, you would:
-                // 1. Fetch questions from your Netlify function
-                // 2. Merge with local questions
-                // 3. Update localStorage
-                // 4. Refresh the UI
+                if (!response.ok) throw new Error(result.error || 'Failed to load');
                 
+                // Merge cloud questions with local ones
+                const cloudQuestions = result;
+                for (const subject in cloudQuestions) {
+                    if (!questions[subject]) {
+                        questions[subject] = [];
+                    }
+                    
+                    // Add only new questions
+                    cloudQuestions[subject].forEach(cloudQ => {
+                        const exists = questions[subject].some(localQ => 
+                            localQ.timestamp === cloudQ.timestamp
+                        );
+                        if (!exists) {
+                            questions[subject].push(cloudQ);
+                        }
+                    });
+                }
+                
+                localStorage.setItem("questions", JSON.stringify(questions));
+                updateSyncStatus("Sync complete!", "success");
+                cloudEnabled = true;
+                displayQuestions();
             } catch (error) {
-                console.error("Sync failed:", error);
-                statusEl.textContent = "Sync failed. Using local questions.";
-                statusEl.className = "sync-status sync-error";
+                console.error('Sync failed:', error);
+                updateSyncStatus("Sync failed. Using local data.", "error");
+                cloudEnabled = false;
             }
-            
+        }
+
+        function updateSyncStatus(message, type) {
+            const statusEl = document.getElementById('sync-status');
+            statusEl.textContent = message;
+            statusEl.className = `sync-status sync-${type}`;
+            statusEl.classList.remove("hidden");
             setTimeout(() => {
                 statusEl.classList.add("hidden");
             }, 3000);
         }
 
-        function checkAutoSync() {
-            const now = Date.now();
-            if (now - lastSyncTime > 3600000) { // 1 hour in milliseconds
-                syncWithCloud();
+        // Utility function to shuffle an array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
             }
+            return array;
         }
     </script>
 </body>
