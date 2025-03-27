@@ -159,8 +159,11 @@
 
     <div id="manage" class="container hidden">
         <h2>Add a New Question</h2>
-        <form id="question-form">
-            <select id="add-subject" required>
+        <!-- Netlify Form: Added name, data-netlify, and honeypot field -->
+        <form id="question-form" name="question-form" data-netlify="true" netlify-honeypot="bot-field">
+            <!-- Honeypot field (invisible to users) -->
+            <input type="hidden" name="bot-field">
+            <select id="add-subject" name="subject" required>
                 <option value="">-- Select Category --</option>
                 <script>
                     for (let i = 1; i <= 19; i++) {
@@ -168,12 +171,12 @@
                     }
                 </script>
             </select>
-            <input type="text" id="new-question" placeholder="Enter question" required>
-            <input type="text" id="option1" placeholder="Option A" required>
-            <input type="text" id="option2" placeholder="Option B" required>
-            <input type="text" id="option3" placeholder="Option C">
-            <input type="text" id="option4" placeholder="Option D">
-            <select id="correct-answer" required>
+            <input type="text" id="new-question" name="question" placeholder="Enter question" required>
+            <input type="text" id="option1" name="option1" placeholder="Option A" required>
+            <input type="text" id="option2" name="option2" placeholder="Option B" required>
+            <input type="text" id="option3" name="option3" placeholder="Option C">
+            <input type="text" id="option4" name="option4" placeholder="Option D">
+            <select id="correct-answer" name="correct-answer" required>
                 <option value="">-- Correct Answer --</option>
                 <option value="A">A</option>
                 <option value="B">B</option>
