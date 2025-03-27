@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Review</title>
+    <title>Review Quiz</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -55,7 +55,6 @@
         }
         .options button:hover {
             background: #666;
-            transform: scale(1.05);
         }
         .correct {
             background: #28a745 !important;
@@ -127,18 +126,6 @@
         .sync-info {
             background-color: #17a2b8;
         }
-        .loading-spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
@@ -148,9 +135,16 @@
     </div>
     
     <div id="quiz" class="container">
-        <h1>Review</h1>
+        <h1>Review Quiz</h1>
         <h2>Select a Category</h2>
-        <select id="subject-select"></select>
+        <select id="subject-select">
+            <option value="">-- Choose a Category --</option>
+            <script>
+                for (let i = 1; i <= 19; i++) {
+                    document.write(`<option value="F${i}">F${i}</option>`);
+                }
+            </script>
+        </select>
         <button onclick="loadSubject()">Load Questions</button>
         
         <div id="quiz-container" class="hidden">
@@ -168,6 +162,11 @@
         <form id="question-form">
             <select id="add-subject" required>
                 <option value="">-- Select Category --</option>
+                <script>
+                    for (let i = 1; i <= 19; i++) {
+                        document.write(`<option value="F${i}">F${i}</option>`);
+                    }
+                </script>
             </select>
             <input type="text" id="new-question" placeholder="Enter question" required>
             <input type="text" id="option1" placeholder="Option A" required>
@@ -186,15 +185,16 @@
         </form>
 
         <div id="question-list" class="question-list">
-            <div class="loading-spinner"></div>
+            <p class="loading">Loading questions...</p>
         </div>
         
         <button onclick="syncWithCloud()" style="margin-top: 20px;">Sync with Cloud</button>
+        <button onclick="clearLocalData()" style="margin-top: 10px; background: #6c757d;">Clear Local Data</button>
     </div>
 
     <script>
         // Global variables
-        let questions = JSON.parse(localStorage.getItem("questions")) || {};
+        let questions = {};
         let currentSubject = "";
         let currentQuestionIndex = 0;
         let score = 0;
@@ -203,44 +203,51 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Load questions from local storage
-            questions = JSON.parse(localStorage.getItem("questions")) || {};
-            displayQuestions();
-            
-            // Dynamically populate subject select options
-            populateSubjectSelect();
+            loadFromLocalStorage();
+            // Set default subject
             const defaultSubject = "F1";
             document.getElementById("subject-select").value = defaultSubject;
             document.getElementById("add-subject").value = defaultSubject;
+            displayQuestions();
         });
 
-        function populateSubjectSelect() {
-            const selectElement = document.getElementById("subject-select");
-            const addSubjectElement = document.getElementById("add-subject");
-            for (let i = 1; i <= 19; i++) {
-                const option = document.createElement("option");
-                option.value = `F${i}`;
-                option.innerText = `F${i}`;
-                selectElement.appendChild(option);
-                addSubjectElement.appendChild(option.cloneNode(true)); // Clone option for add-subject
-            }
-        }
-
         function showTab(tabName) {
+            // Hide all tabs
             document.getElementById('quiz').classList.add('hidden');
             document.getElementById('manage').classList.add('hidden');
+            
+            // Show selected tab
             document.getElementById(tabName).classList.remove('hidden');
+            
+            // Refresh questions when switching to manage tab
             if (tabName === 'manage') {
                 displayQuestions();
             }
         }
 
+        function loadFromLocalStorage() {
+            const storedQuestions = localStorage.getItem("questions");
+            questions = storedQuestions ? JSON.parse(storedQuestions) : {};
+            console.log("Loaded questions:", questions);
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem("questions", JSON.stringify(questions));
+            console.log("Saved questions:", questions);
+        }
+
         function loadSubject() {
             currentSubject = document.getElementById("subject-select").value;
+            if (!currentSubject) {
+                alert("Please select a category first");
+                return;
+            }
+            
             currentQuestionIndex = 0;
             score = 0;
             
             if (questions[currentSubject] && questions[currentSubject].length > 0) {
+                // Shuffle questions for this subject
                 shuffledQuestions = [...questions[currentSubject]];
                 shuffleArray(shuffledQuestions);
                 
@@ -254,7 +261,7 @@
 
         function showQuestion() {
             if (!shuffledQuestions[currentQuestionIndex]) {
-                console.error("No question at index", currentQuestionIndex);
+                console.error("No question found at index", currentQuestionIndex);
                 return;
             }
 
@@ -264,18 +271,27 @@
             
             let optionsDiv = document.getElementById("options");
             optionsDiv.innerHTML = "";
-
-            const options = ['option1', 'option2', 'option3', 'option4'].map(opt => ({
-                letter: opt.charAt(opt.length - 1),
-                text: currentQuestionData[opt] || ''
-            })).filter(opt => opt.text);
-
+            
+            // Prepare options with their labels
+            const options = [
+                { letter: "A", text: currentQuestionData.option1 },
+                { letter: "B", text: currentQuestionData.option2 },
+                { letter: "C", text: currentQuestionData.option3 || '' },
+                { letter: "D", text: currentQuestionData.option4 || '' }
+            ].filter(opt => opt.text); // Remove empty options
+            
+            // Find the correct answer
             const correctAnswerLetter = currentQuestionData['correct-answer'];
+            
+            // Shuffle the options
             shuffleArray(options);
-
+            
+            // Create buttons for each option
             options.forEach(option => {
                 let button = document.createElement("button");
                 button.innerText = `${option.letter}. ${option.text}`;
+                
+                // Check if this option is the correct one
                 const isCorrect = option.letter === correctAnswerLetter;
                 
                 button.onclick = () => checkAnswer(button, option.letter, correctAnswerLetter, isCorrect);
@@ -284,30 +300,25 @@
         }
 
         function checkAnswer(button, selectedLetter, correctLetter, isCorrect) {
-            document.querySelectorAll(".options button").forEach(btn => btn.disabled = true);
+            // Disable all buttons
+            document.querySelectorAll(".options button").forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove("correct", "wrong");
+            });
             
             if (isCorrect) {
                 button.classList.add("correct");
                 score++;
             } else {
                 button.classList.add("wrong");
+                // Highlight the correct answer
+                document.querySelectorAll(".options button").forEach(btn => {
+                    if (btn.innerText.startsWith(correctLetter)) {
+                        btn.classList.add("correct");
+                    }
+                });
             }
-
-            updateScore();
-
-            setTimeout(() => {
-                currentQuestionIndex++;
-                if (currentQuestionIndex < shuffledQuestions.length) {
-                    showQuestion();
-                } else {
-                    alert("Review completed!");
-                    document.getElementById("quiz-container").classList.add("hidden");
-                }
-            }, 1000);
-        }
-
-        function updateScore() {
-            document.getElementById("total-score").innerText = `Score: ${score} / ${shuffledQuestions.length}`;
+            document.getElementById("total-score").innerText = `Score: ${score}/${shuffledQuestions.length}`;
         }
 
         function nextQuestion() {
@@ -315,15 +326,187 @@
             if (currentQuestionIndex < shuffledQuestions.length) {
                 showQuestion();
             } else {
-                alert("Review completed!");
+                const percentage = Math.round((score / shuffledQuestions.length) * 100);
+                alert(`Quiz Completed!\nYour score: ${score}/${shuffledQuestions.length} (${percentage}%)`);
+                resetQuiz();
             }
         }
 
         function resetQuiz() {
-            score = 0;
             currentQuestionIndex = 0;
-            updateScore();
-            showQuestion();
+            score = 0;
+            document.getElementById("total-score").innerText = "";
+            document.getElementById("quiz-container").classList.add("hidden");
+        }
+
+        function addQuestion() {
+            const subject = document.getElementById("add-subject").value;
+            const question = document.getElementById("new-question").value.trim();
+            const option1 = document.getElementById("option1").value.trim();
+            const option2 = document.getElementById("option2").value.trim();
+            const option3 = document.getElementById("option3").value.trim();
+            const option4 = document.getElementById("option4").value.trim();
+            const correctAnswer = document.getElementById("correct-answer").value;
+
+            // Validate inputs
+            if (!subject || !question || !correctAnswer || !option1 || !option2) {
+                updateSyncStatus("Please fill all required fields", "error");
+                return;
+            }
+
+            const questionData = {
+                subject,
+                question,
+                option1,
+                option2,
+                option3: option3 || undefined,
+                option4: option4 || undefined,
+                'correct-answer': correctAnswer,
+                timestamp: Date.now()
+            };
+
+            // Save to local storage
+            if (!questions[subject]) {
+                questions[subject] = [];
+            }
+            questions[subject].push(questionData);
+            saveToLocalStorage();
+            
+            // Update UI immediately
+            displayQuestions();
+            document.getElementById("question-form").reset();
+            updateSyncStatus("Question saved locally!", "success");
+            
+            // Try to save to cloud in background
+            saveToCloud(questionData);
+        }
+
+        async function saveToCloud(questionData) {
+            try {
+                const response = await fetch('/.netlify/functions/save-question', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(questionData)
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Cloud save failed');
+                }
+                
+                updateSyncStatus("Question saved to cloud!", "success");
+            } catch (error) {
+                console.error('Cloud save error:', error);
+                updateSyncStatus("Cloud save failed - using local storage", "error");
+            }
+        }
+
+        async function syncWithCloud() {
+            try {
+                updateSyncStatus("Syncing with cloud...", "info");
+                const response = await fetch('/.netlify/functions/get-questions');
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load cloud questions');
+                }
+                
+                const cloudQuestions = await response.json();
+                console.log("Received cloud questions:", cloudQuestions);
+                
+                // Merge cloud data with local data
+                for (const subject in cloudQuestions) {
+                    if (!questions[subject]) {
+                        questions[subject] = [];
+                    }
+                    
+                    cloudQuestions[subject].forEach(cloudQ => {
+                        const exists = questions[subject].some(localQ => 
+                            localQ.timestamp === cloudQ.timestamp
+                        );
+                        if (!exists) {
+                            questions[subject].push(cloudQ);
+                        }
+                    });
+                }
+                
+                saveToLocalStorage();
+                updateSyncStatus("Sync complete! Questions loaded: " + 
+                    Object.keys(questions).reduce((acc, subj) => acc + questions[subj].length, 0), "success");
+                
+                // Refresh display
+                displayQuestions();
+                
+            } catch (error) {
+                console.error('Sync failed:', error);
+                updateSyncStatus("Sync failed: " + error.message, "error");
+            }
+        }
+
+        function displayQuestions() {
+            const subject = document.getElementById("add-subject").value;
+            const questionListDiv = document.getElementById("question-list");
+            questionListDiv.innerHTML = "";
+
+            if (!questions[subject] || questions[subject].length === 0) {
+                questionListDiv.innerHTML = '<p>No questions found for this category. Add some!</p>';
+                return;
+            }
+
+            questions[subject].forEach((q, index) => {
+                const questionItem = document.createElement("div");
+                questionItem.innerHTML = `
+                    <strong>Question ${index + 1}: ${q.question}</strong><br>
+                    Options: ${[q.option1, q.option2, q.option3, q.option4].filter(x => x).join(", ")}<br>
+                    Answer: ${q['correct-answer']}<br>
+                    <button class="edit" onclick="editQuestion('${subject}', ${index})">Edit</button>
+                    <button onclick="deleteQuestion('${subject}', ${index})">Delete</button>
+                    <hr>
+                `;
+                questionListDiv.appendChild(questionItem);
+            });
+        }
+
+        function deleteQuestion(subject, index) {
+            if (!confirm("Are you sure you want to delete this question?")) return;
+            
+            questions[subject].splice(index, 1);
+            if (questions[subject].length === 0) {
+                delete questions[subject];
+            }
+            saveToLocalStorage();
+            displayQuestions();
+        }
+
+        function editQuestion(subject, index) {
+            const q = questions[subject][index];
+            document.getElementById("add-subject").value = q.subject;
+            document.getElementById("new-question").value = q.question;
+            document.getElementById("option1").value = q.option1;
+            document.getElementById("option2").value = q.option2;
+            document.getElementById("option3").value = q.option3 || '';
+            document.getElementById("option4").value = q.option4 || '';
+            document.getElementById("correct-answer").value = q['correct-answer'];
+            
+            deleteQuestion(subject, index);
+        }
+
+        function clearLocalData() {
+            if (confirm("Clear ALL local question data? This won't affect cloud data.")) {
+                localStorage.removeItem("questions");
+                questions = {};
+                updateSyncStatus("Local data cleared. Sync to reload cloud data.", "info");
+                displayQuestions();
+            }
+        }
+
+        function updateSyncStatus(message, type) {
+            const statusEl = document.getElementById('sync-status');
+            statusEl.textContent = message;
+            statusEl.className = `sync-status sync-${type}`;
+            statusEl.classList.remove("hidden");
+            setTimeout(() => {
+                statusEl.classList.add("hidden");
+            }, 5000);
         }
 
         function shuffleArray(array) {
@@ -331,97 +514,7 @@
                 const j = Math.floor(Math.random() * (i + 1));
                 [array[i], array[j]] = [array[j], array[i]];
             }
-        }
-
-        function addQuestion() {
-            const subject = document.getElementById("add-subject").value;
-            const question = document.getElementById("new-question").value;
-            const option1 = document.getElementById("option1").value;
-            const option2 = document.getElementById("option2").value;
-            const option3 = document.getElementById("option3").value;
-            const option4 = document.getElementById("option4").value;
-            const correctAnswer = document.getElementById("correct-answer").value;
-
-            if (!subject || !question || !correctAnswer || !option1 || !option2) {
-                updateSyncStatus("Please fill all required fields", "error");
-                return;
-            }
-
-            const newQuestion = {
-                question,
-                option1,
-                option2,
-                option3,
-                option4,
-                correct-answer: correctAnswer
-            };
-
-            if (!questions[subject]) {
-                questions[subject] = [];
-            }
-
-            questions[subject].push(newQuestion);
-            localStorage.setItem("questions", JSON.stringify(questions));
-            updateSyncStatus("Question added successfully!", "success");
-            displayQuestions();
-        }
-
-        function displayQuestions() {
-            const questionList = document.getElementById("question-list");
-            questionList.innerHTML = "";
-
-            const subjectQuestions = questions[currentSubject] || [];
-            if (subjectQuestions.length === 0) {
-                questionList.innerHTML = "<p>No questions available.</p>";
-            }
-
-            subjectQuestions.forEach((question, index) => {
-                const div = document.createElement("div");
-                div.innerHTML = `
-                    <p><strong>Q${index + 1}:</strong> ${question.question}</p>
-                    <button class="edit" onclick="editQuestion(${index})">Edit</button>
-                    <button onclick="deleteQuestion(${index})">Delete</button>
-                `;
-                questionList.appendChild(div);
-            });
-        }
-
-        function deleteQuestion(index) {
-            questions[currentSubject].splice(index, 1);
-            localStorage.setItem("questions", JSON.stringify(questions));
-            displayQuestions();
-        }
-
-        function editQuestion(index) {
-            const question = questions[currentSubject][index];
-            document.getElementById("new-question").value = question.question;
-            document.getElementById("option1").value = question.option1;
-            document.getElementById("option2").value = question.option2;
-            document.getElementById("option3").value = question.option3 || '';
-            document.getElementById("option4").value = question.option4 || '';
-            document.getElementById("correct-answer").value = question.correct-answer;
-            deleteQuestion(index);
-        }
-
-        function syncWithCloud() {
-            const status = document.getElementById("sync-status");
-            status.classList.remove("hidden");
-            status.classList.add("sync-info");
-            status.textContent = "Syncing...";
-
-            setTimeout(() => {
-                status.classList.remove("sync-info");
-                status.classList.add("sync-success");
-                status.textContent = "Successfully synced with cloud!";
-            }, 2000);
-        }
-
-        function updateSyncStatus(message, type) {
-            const status = document.getElementById("sync-status");
-            status.textContent = message;
-            status.classList.remove("sync-success", "sync-error", "sync-info");
-            status.classList.add(type === "error" ? "sync-error" : "sync-success");
-            status.classList.remove("hidden");
+            return array;
         }
     </script>
 </body>
