@@ -159,9 +159,9 @@
 
     <div id="manage" class="container hidden">
         <h2>Add a New Question</h2>
-        <!-- Netlify Form: Added name, data-netlify, and honeypot field -->
+        <!-- Netlify Form: Added required attributes -->
         <form id="question-form" name="question-form" data-netlify="true" netlify-honeypot="bot-field">
-            <!-- Honeypot field (invisible to users) -->
+            <!-- Honeypot field -->
             <input type="hidden" name="bot-field">
             <select id="add-subject" name="subject" required>
                 <option value="">-- Select Category --</option>
@@ -222,9 +222,10 @@
             // Show selected tab
             document.getElementById(tabName).classList.remove('hidden');
             
-            // Refresh questions when switching to manage tab
+            // When switching to Manage Questions, load both local questions and form submissions from Netlify
             if (tabName === 'manage') {
                 displayQuestions();
+                loadFormSubmissions(); // Call our new function
             }
         }
 
@@ -442,6 +443,21 @@
             } catch (error) {
                 console.error('Sync failed:', error);
                 updateSyncStatus("Sync failed: " + error.message, "error");
+            }
+        }
+
+        // New function: Load form submissions from Netlify Forms using our Netlify Function
+        async function loadFormSubmissions() {
+            try {
+                const response = await fetch('/.netlify/functions/get-form-submissions');
+                if (!response.ok) {
+                    throw new Error("Failed to load form submissions");
+                }
+                const submissions = await response.json();
+                console.log("Form submissions:", submissions);
+                // Here you can process the submissions and update your UI if needed.
+            } catch (error) {
+                console.error("Error loading form submissions:", error);
             }
         }
 
