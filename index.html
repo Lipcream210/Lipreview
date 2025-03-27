@@ -3,11 +3,20 @@
 <head>
     <title>Review</title>
     <style>
-        /* [Previous CSS styles remain exactly the same] */
+        /* Existing styles */
+
+        /* Updated style for the question input area */
+        #new-question {
+            background-color: white;
+            color: black; /* Ensure text is visible */
+            border: 1px solid #ccc; /* Optional: Add a border for better visibility */
+            padding: 5px; /* Optional: Improve spacing */
+            width: 100%; /* Ensure it takes up full width */
+        }
     </style>
 </head>
 <body>
-    <!-- [Previous HTML structure remains exactly the same] -->
+    <!-- Existing HTML structure -->
 
     <script>
         // Global variables
@@ -26,8 +35,6 @@
             displayQuestions();
         });
 
-        // [Previous showTab, loadSubject, resetQuiz functions remain the same]
-
         async function showQuestion() {
             currentQuestionData = shuffledQuestions[currentQuestionIndex];
             document.getElementById("question").innerText = currentQuestionData.question;
@@ -36,35 +43,28 @@
             let optionsDiv = document.getElementById("options");
             optionsDiv.innerHTML = "";
             
-            // Prepare options with their labels
             const optionsWithLetters = [
                 { letter: "A", text: currentQuestionData.option1 },
                 { letter: "B", text: currentQuestionData.option2 },
                 { letter: "C", text: currentQuestionData.option3 },
                 { letter: "D", text: currentQuestionData.option4 }
-            ].filter(opt => opt.text); // Remove empty options
-            
-            // Find the correct answer text
+            ].filter(opt => opt.text);
+
             const correctAnswerLetter = currentQuestionData['correct-answer'];
             const correctAnswerText = optionsWithLetters.find(opt => opt.letter === correctAnswerLetter)?.text;
             
-            // Shuffle the options
             shuffleArray(optionsWithLetters);
             
-            // Create buttons for each option
             optionsWithLetters.forEach(option => {
                 let button = document.createElement("button");
                 button.innerText = `${option.letter}. ${option.text}`;
                 
-                // Check if this option is the correct one (comparing text)
                 const isCorrect = option.text === correctAnswerText;
                 
                 button.onclick = () => checkAnswer(button, option.letter, correctAnswerLetter, isCorrect);
                 optionsDiv.appendChild(button);
             });
         }
-
-        // [Previous checkAnswer, nextQuestion functions remain the same]
 
         async function addQuestion() {
             const subject = document.getElementById("add-subject").value;
@@ -75,7 +75,6 @@
             const option4 = document.getElementById("option4").value.trim();
             const correctAnswer = document.getElementById("correct-answer").value;
 
-            // Validate inputs
             if (!subject || !question || !correctAnswer || !option1 || !option2) {
                 updateSyncStatus("Please fill all required fields", "error");
                 return;
@@ -92,12 +91,10 @@
                 timestamp: Date.now()
             };
 
-            // 1. First save to localStorage for immediate response
             if (!questions[subject]) questions[subject] = [];
             questions[subject].push(questionData);
             localStorage.setItem("questions", JSON.stringify(questions));
             
-            // 2. Then try to save to cloud
             try {
                 updateSyncStatus("Saving to cloud...", "info");
                 const response = await fetch('/.netlify/functions/save-question', {
@@ -129,7 +126,6 @@
                 
                 const cloudQuestions = await response.json();
                 
-                // Merge cloud questions with local ones
                 for (const subject in cloudQuestions) {
                     if (!questions[subject]) questions[subject] = [];
                     
@@ -150,8 +146,6 @@
                 updateSyncStatus("Sync failed. Using local data.", "error");
             }
         }
-
-        // [Previous displayQuestions, deleteQuestion, editQuestion functions remain the same]
 
         function updateSyncStatus(message, type) {
             const statusEl = document.getElementById('sync-status');
